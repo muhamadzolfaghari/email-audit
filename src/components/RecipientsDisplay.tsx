@@ -1,73 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import styled from 'styled-components'
 
 interface RecipientsDisplay {
   recipients: string[]
 }
 
-type StyleRecord = { [key: string]: React.CSSProperties }
-
 export default function RecipientsDisplay({ recipients }: RecipientsDisplay) {
-  const rootRef = useRef<HTMLDivElement>(null)
-  // const [recipients, setRecipinets] = useState<string[]>(propsRecipients)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [displayText, setDisplayText] = useState<string>('')
   const [trimmedCount, setTrimmedCount] = useState<number>(0)
-  const styles: StyleRecord = {
-    root: {
-      display: 'flex',
-      width: 'inherit',
-      overflow: 'hidden',
-      justifyContent: 'space-between',
-    },
-    badge: {
-      fontSize: '16px',
-      color: '#f0f0f0',
-      backgroundColor: '#666666',
-      borderRadius: '3px',
-      padding: '2px 5px',
-    },
-  }
+  const displayTextRef = useRef<HTMLSpanElement>(null)
 
   const getTextWidth = useCallback((text: string) => {
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')!
-    // Get font from body
     context.font = getComputedStyle(document.body).font
     return context.measureText(text).width
   }, [])
 
   useEffect(() => {
-    if (!rootRef.current) {
+    if (!containerRef.current) {
       return
     }
 
-    // const remainWidth = getTextWidth()
-    // let remainLength = recipients.length
-    //
-    // while (remainLength) {
-    //   remainLength--
-    // }
-
     function handleResize() {
-      const labels: string[] = []
-
-      const computedStyle = getComputedStyle(rootRef.current!)
-
-      // Width with padding
-      let remainLength = parseInt(computedStyle.width);
-      let newTrimmedCount = 0;
-
-      for (let i = 0; i < recipients.length; i++) {
-        const recipient = recipients[i]
-        remainLength -= getTextWidth(recipient)
-
-        if (remainLength > 0) {
-          labels.push(recipient)
-        } else {
-          newTrimmedCount++;
-        }
+      if (!displayTextRef.current) {
+        return
       }
 
-      setDisplayText(labels.join(','))
+      let newDisplayText = ''
+      let newTrimmedCount = 0
+      const computedStyle = getComputedStyle(containerRef.current!)
+      let rootWidth = parseInt(computedStyle.width)
+
+      newDisplayText = recipients.join(', ')
+
+      if (rootWidth - getTextWidth(newDisplayText) < 0) {
+        newDisplayText = recipients[0] + ', ...'
+        newTrimmedCount += recipients.slice(1).length
+      }
+
+      setDisplayText(newDisplayText)
       setTrimmedCount(newTrimmedCount)
     }
 
@@ -81,9 +54,32 @@ export default function RecipientsDisplay({ recipients }: RecipientsDisplay) {
   }, [])
 
   return (
-    <div ref={rootRef} style={styles.root}>
-      <span>{displayText}</span>
-      {!!trimmedCount && <div style={styles.badge} }>+{trimmedCount}</div>}
-    </div>
+    <Container ref={containerRef}>
+      <DisplayText ref={displayTextRef}>{displayText}</DisplayText>
+      {!!trimmedCount && <Badge>+{trimmedCount}</Badge>}
+    </Container>
   )
 }
+
+const Badge = styled('div')`
+  font-size: 16px;
+  color: #f0f0f0;
+  background-color: #666666;
+  border-radius: 3px;
+  padding: 2px 5px;
+`
+
+const Container = styled('div')`
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+`
+
+const DisplayText = styled('span')`
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  justify-content: space-between;
+`
